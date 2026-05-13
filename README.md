@@ -17,7 +17,7 @@ This repository contains the deployment configuration for **AdGuard Home**, a ne
 ## 🛠️ Architecture
 * **Compute Node:** Raspberry Pi 4 Model B
 * **Storage:** 16GB USB Flash Drive mounted at `/mnt/services` (ext4)
-* **Networking:** * DNS queries handled via port `53` (TCP/UDP)
+* **Networking:**  DNS queries handled via port `53` (TCP/UDP)
   * Setup Wizard accessible via Tailscale on port `3001`
   * Web Interface accessible via Tailscale on port `8081` (Bypassing default ports to prevent conflicts with adjacent services).
 
