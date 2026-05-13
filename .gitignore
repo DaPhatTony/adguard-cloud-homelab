@@ -1,0 +1,13 @@
+# General exclusions
+.DS_Store
+Thumbs.db
+
+# Security exclusions
+.env
+*.key
+*.pem
+
+# Local data directories (prevents accidentally uploading database files)
+/data/
+/work/
+/conf/
