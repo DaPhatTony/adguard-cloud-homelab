@@ -11,3 +11,6 @@ Thumbs.db
 /data/
 /work/
 /conf/
+/certs/
+/workdir/
+/confdir/

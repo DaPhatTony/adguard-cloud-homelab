@@ -6,8 +6,11 @@ services:
     volumes:
       - /mnt/services/adguard/work:/opt/adguardhome/work
       - /mnt/services/adguard/conf:/opt/adguardhome/conf
+      - ./certs:/certs:ro
     ports:
       - "53:53/tcp"
       - "53:53/udp"
       - "8081:8081/tcp"
       - "3001:3000/tcp"
+      - "8443:443/tcp"
+      - "8443:443/udp"

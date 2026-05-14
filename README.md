@@ -1,49 +1,90 @@
-# adguard-cloud-homelab
-A containerized, network-wide DNS sinkhole and privacy shield powered by AdGuard Home. Deployed on a Raspberry Pi 4 with secure remote management via Tailscale and dedicated persistent storage for audit logging and performance.
-# Network-Wide DNS Sinkhole (AdGuard Home) 🛡️
+# AdGuard Cloud Homelab: Secure DNS Sinkhole & Privacy Shield
 
-**A high-performance network security and privacy layer for the modern homelab.**
+This repository contains the deployment configuration for a containerized, network-wide DNS sinkhole powered by AdGuard Home. Deployed on a Raspberry Pi 4, this project emphasizes secure remote management and encrypted DNS protocols (DoH/DoT) over a zero-trust network.
 
-This repository contains the deployment configuration for **AdGuard Home**, a network-wide DNS sinkhole that provides robust protection against tracking, advertisements, and malicious domains. By intercepting DNS requests at the network level, this solution secures all connected devices—from IoT hardware to mobile devices—without requiring individual client software.
+## Architecture & Security Overview
+This infrastructure integrates robust network privacy and security practices:
+* **Containerization:** The AdGuard Home service and its configurations are completely isolated using Docker.
+* **Encrypted DNS:** Configured to support DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), and DNS-over-QUIC (DoQ) to prevent upstream DNS hijacking and ISP snooping.
+* **Dashboard Security:** The administrative interface is secured with full SSL/TLS termination using Tailscale MagicDNS certificates.
+* **Custom Port Binding:** HTTPS traffic is routed through port `8443` to ensure clean coexistence with other secure services (like Vaultwarden and Nginx) running on the same host.
+* **Network Isolation:** Administrative access is restricted strictly to authenticated Tailscale VPN clients.
 
-### **Key Security Features:**
-* **Privacy-First DNS:** Redirects traffic through a secure sinkhole to mitigate telemetry and data harvesting.
-* **Modular Infrastructure:** Containerized via Docker to ensure isolation from other homelab services.
-* **Zero-Exposure Networking:** Fully integrated with **Tailscale**, allowing for secure remote dashboard administration without exposing public ports to the internet.
-* **Optimized Persistence:** Configured to utilize a dedicated 16GB ext4-formatted volume to protect the primary OS from log-heavy write operations.
-
----
-
-## 🛠️ Architecture
-* **Compute Node:** Raspberry Pi 4 Model B
-* **Storage:** 16GB USB Flash Drive mounted at `/mnt/services` (ext4)
-* **Networking:**  DNS queries handled via port `53` (TCP/UDP)
-  * Setup Wizard accessible via Tailscale on port `3001`
-  * Web Interface accessible via Tailscale on port `8081` (Bypassing default ports to prevent conflicts with adjacent services).
+## System Prerequisites
+* **Hardware:** Raspberry Pi 4
+* **OS:** Raspberry Pi OS (64-bit)
+* **Dependencies:** Docker Engine, Docker Compose V2
+* **Network:** Tailscale installed and authenticated with MagicDNS enabled
 
 ---
 
-## 🚀 Deployment Instructions
+## Step-by-Step Installation Guide
 
-### 1. Storage Preparation
-Ensure the persistent storage drive is mounted and the necessary directories exist so Docker can properly map the volumes:
-
+### Step 1: Initialize the Environment
+Create an isolated directory and set up version control to track infrastructure changes.
 ```bash
-sudo mkdir -p /mnt/services/adguard/work
-sudo mkdir -p /mnt/services/adguard/conf
-sudo chown -R 1000:1000 /mnt/services/adguard
+mkdir ~/adguard-cloud-homelab
+cd ~/adguard-cloud-homelab
+git init
 ```
 
-### 2. Stack Deployment
-Navigate to the directory containing the `docker-compose.yml` stack and deploy the container in the background:
+### Step 2: Establish Security Exclusions
+Prevent private SSL keys and personal network configurations from being pushed to public repositories.
+```bash
+nano .gitignore
+```
+Add the following rules:
+```text
+certs/
+workdir/
+confdir/
+```
 
+### Step 3: SSL/TLS Certificate Generation
+Generate domain-specific certificates using Tailscale to encrypt the administrative dashboard and DNS queries.
+```bash
+mkdir certs
+sudo tailscale cert --cert-file ./certs/tls.crt --key-file ./certs/tls.key <your-tailscale-domain>
+```
+
+### Step 4: Configure the Docker Infrastructure
+Define the stack, mapping the necessary DNS ports, the updated HTTPS port (`8443`), and the certificate volumes.
+```bash
+nano docker-compose.yml
+```
+
+```yaml
+services:
+  adguardhome:
+    image: adguard/adguardhome
+    container_name: adguardhome
+    restart: unless-stopped
+    volumes:
+      - ./workdir:/opt/adguardhome/work
+      - ./confdir:/opt/adguardhome/conf
+      - ./certs:/certs:ro
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:8081/tcp"
+      - "3001:3000/tcp"
+      - "8443:443/tcp"
+      - "8443:443/udp"
+```
+
+### Step 5: Execute Deployment
+Launch the secure stack in detached mode.
 ```bash
 docker compose up -d
 ```
 
-### 3. Initial Configuration
-1. Open a web browser and access the initial setup wizard via the Tailscale network:
-   `http://<TAILSCALE_IP>:3001`
-2. **Critical Step:** During the wizard, on the "Listen Interfaces" screen, change the **Web Interface** port from `80` to **`8081`** to align with the Docker port mapping.
-3. Once setup is complete, access the permanent dashboard at:
-   `http://<TAILSCALE_IP>:8081`
+### Step 6: Internal Encryption Setup
+1. Access the web interface via the initial HTTP setup port (`3001`).
+2. Navigate to **Settings** > **Encryption Settings**.
+3. Enable encryption and map the `/certs/tls.crt` and `/certs/tls.key` paths.
+
+---
+
+## Secure Access
+Once encryption is validated, the dashboard can be managed securely across the Tailscale network:
+* **HTTPS Access:** `https://<tailscale-machine-name>.<tailnet-id>.ts.net:8443`
